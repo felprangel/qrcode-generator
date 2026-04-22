@@ -48,7 +48,7 @@ func TestRun_ConfigSet_PersistsValue(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"config", "set", "URL_PREFIX=numero_do_zap="}, &stdout, &stderr)
+	code := run([]string{"config", "set", "PREFIX=numero_do_zap="}, &stdout, &stderr)
 	if code != 0 {
 		t.Errorf("config set exit code = %d, want 0. stderr=%q", code, stderr.String())
 	}

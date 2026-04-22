@@ -17,8 +17,8 @@ func TestLoad_NoFile_ReturnsEmptyConfig(t *testing.T) {
 	if cfg == nil {
 		t.Fatal("Load returned nil config")
 	}
-	if cfg.URLPrefix != "" {
-		t.Errorf("URLPrefix = %q, want empty", cfg.URLPrefix)
+	if cfg.Prefix != "" {
+		t.Errorf("Prefix = %q, want empty", cfg.Prefix)
 	}
 }
 
@@ -37,44 +37,44 @@ func writeConfig(t *testing.T, contents string) string {
 	return p
 }
 
-func TestLoad_ValidFile_ParsesURLPrefix(t *testing.T) {
-	writeConfig(t, "URL_PREFIX=numero_do_zap=\n")
+func TestLoad_ValidFile_ParsesPrefix(t *testing.T) {
+	writeConfig(t, "PREFIX=numero_do_zap=\n")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load error: %v", err)
 	}
-	if cfg.URLPrefix != "numero_do_zap=" {
-		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "numero_do_zap=")
+	if cfg.Prefix != "numero_do_zap=" {
+		t.Errorf("Prefix = %q, want %q", cfg.Prefix, "numero_do_zap=")
 	}
 }
 
 func TestLoad_IgnoresBlanksAndComments(t *testing.T) {
-	writeConfig(t, "# a comment\n\n   # indented comment\nURL_PREFIX=foo\n\n")
+	writeConfig(t, "# a comment\n\n   # indented comment\nPREFIX=foo\n\n")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load error: %v", err)
 	}
-	if cfg.URLPrefix != "foo" {
-		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "foo")
+	if cfg.Prefix != "foo" {
+		t.Errorf("Prefix = %q, want %q", cfg.Prefix, "foo")
 	}
 }
 
 func TestLoad_UnknownKey_SilentlySkipped(t *testing.T) {
-	writeConfig(t, "URL_PREFIX=x\nUNKNOWN_KEY=y\n")
+	writeConfig(t, "PREFIX=x\nUNKNOWN_KEY=y\n")
 
 	cfg, err := Load()
 	if err != nil {
 		t.Fatalf("Load error: %v", err)
 	}
-	if cfg.URLPrefix != "x" {
-		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "x")
+	if cfg.Prefix != "x" {
+		t.Errorf("Prefix = %q, want %q", cfg.Prefix, "x")
 	}
 }
 
 func TestLoad_MalformedLine_ReturnsErrorWithLineNumber(t *testing.T) {
-	writeConfig(t, "URL_PREFIX=ok\nno_equals_sign_here\n")
+	writeConfig(t, "PREFIX=ok\nno_equals_sign_here\n")
 
 	_, err := Load()
 	if err == nil {
@@ -88,7 +88,7 @@ func TestLoad_MalformedLine_ReturnsErrorWithLineNumber(t *testing.T) {
 func TestSet_CreatesFileAndDir(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
-	if err := Set("URL_PREFIX", "numero_do_zap="); err != nil {
+	if err := Set("PREFIX", "numero_do_zap="); err != nil {
 		t.Fatalf("Set error: %v", err)
 	}
 
@@ -96,15 +96,15 @@ func TestSet_CreatesFileAndDir(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load after Set error: %v", err)
 	}
-	if cfg.URLPrefix != "numero_do_zap=" {
-		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "numero_do_zap=")
+	if cfg.Prefix != "numero_do_zap=" {
+		t.Errorf("Prefix = %q, want %q", cfg.Prefix, "numero_do_zap=")
 	}
 }
 
 func TestSet_UpdatesExistingKeyWithoutDuplicating(t *testing.T) {
-	writeConfig(t, "URL_PREFIX=old\n")
+	writeConfig(t, "PREFIX=old\n")
 
-	if err := Set("URL_PREFIX", "new"); err != nil {
+	if err := Set("PREFIX", "new"); err != nil {
 		t.Fatalf("Set error: %v", err)
 	}
 
@@ -112,20 +112,20 @@ func TestSet_UpdatesExistingKeyWithoutDuplicating(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	count := strings.Count(string(data), "URL_PREFIX=")
+	count := strings.Count(string(data), "PREFIX=")
 	if count != 1 {
-		t.Errorf("URL_PREFIX appears %d times, want 1. File:\n%s", count, data)
+		t.Errorf("PREFIX appears %d times, want 1. File:\n%s", count, data)
 	}
 	cfg, _ := Load()
-	if cfg.URLPrefix != "new" {
-		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "new")
+	if cfg.Prefix != "new" {
+		t.Errorf("Prefix = %q, want %q", cfg.Prefix, "new")
 	}
 }
 
 func TestSet_PreservesCommentsAndBlanks(t *testing.T) {
-	writeConfig(t, "# my config\n\nURL_PREFIX=old\n# trailing note\n")
+	writeConfig(t, "# my config\n\nPREFIX=old\n# trailing note\n")
 
-	if err := Set("URL_PREFIX", "new"); err != nil {
+	if err := Set("PREFIX", "new"); err != nil {
 		t.Fatalf("Set error: %v", err)
 	}
 
@@ -134,7 +134,7 @@ func TestSet_PreservesCommentsAndBlanks(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(data)
-	for _, want := range []string{"# my config", "# trailing note", "URL_PREFIX=new"} {
+	for _, want := range []string{"# my config", "# trailing note", "PREFIX=new"} {
 		if !strings.Contains(s, want) {
 			t.Errorf("file missing %q. Contents:\n%s", want, s)
 		}

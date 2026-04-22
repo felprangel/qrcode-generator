@@ -44,7 +44,7 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	}
 	for _, n := range args {
 		fmt.Fprintf(stdout, "--- %s ---\n", n)
-		qr.Render(stdout, cfg.URLPrefix+n)
+		qr.Render(stdout, cfg.Prefix+n)
 		fmt.Fprintln(stdout)
 	}
 	return 0

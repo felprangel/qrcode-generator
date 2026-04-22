@@ -13,12 +13,12 @@ import (
 
 // Config holds user-configurable settings.
 type Config struct {
-	URLPrefix string
+	Prefix string
 }
 
 // known is the whitelist of recognized config keys.
 var known = map[string]struct{}{
-	"URL_PREFIX": {},
+	"PREFIX": {},
 }
 
 // Load reads the config file from the user's XDG config directory.
@@ -53,8 +53,8 @@ func Load() (*Config, error) {
 			continue
 		}
 		switch key {
-		case "URL_PREFIX":
-			cfg.URLPrefix = value
+		case "PREFIX":
+			cfg.Prefix = value
 		}
 	}
 	if err := scanner.Err(); err != nil {
