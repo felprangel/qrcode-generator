@@ -1,0 +1,10 @@
+# Compiled binary
+/qrcode-generator
+
+# Go build cache
+*.test
+*.out
+
+# IDE
+.idea/
+.vscode/
