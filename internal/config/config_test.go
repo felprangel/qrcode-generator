@@ -84,3 +84,68 @@ func TestLoad_MalformedLine_ReturnsErrorWithLineNumber(t *testing.T) {
 		t.Errorf("error %q does not mention line 2", err)
 	}
 }
+
+func TestSet_CreatesFileAndDir(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	if err := Set("URL_PREFIX", "numero_do_zap="); err != nil {
+		t.Fatalf("Set error: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load after Set error: %v", err)
+	}
+	if cfg.URLPrefix != "numero_do_zap=" {
+		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "numero_do_zap=")
+	}
+}
+
+func TestSet_UpdatesExistingKeyWithoutDuplicating(t *testing.T) {
+	writeConfig(t, "URL_PREFIX=old\n")
+
+	if err := Set("URL_PREFIX", "new"); err != nil {
+		t.Fatalf("Set error: %v", err)
+	}
+
+	data, err := os.ReadFile(path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := strings.Count(string(data), "URL_PREFIX=")
+	if count != 1 {
+		t.Errorf("URL_PREFIX appears %d times, want 1. File:\n%s", count, data)
+	}
+	cfg, _ := Load()
+	if cfg.URLPrefix != "new" {
+		t.Errorf("URLPrefix = %q, want %q", cfg.URLPrefix, "new")
+	}
+}
+
+func TestSet_PreservesCommentsAndBlanks(t *testing.T) {
+	writeConfig(t, "# my config\n\nURL_PREFIX=old\n# trailing note\n")
+
+	if err := Set("URL_PREFIX", "new"); err != nil {
+		t.Fatalf("Set error: %v", err)
+	}
+
+	data, err := os.ReadFile(path())
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(data)
+	for _, want := range []string{"# my config", "# trailing note", "URL_PREFIX=new"} {
+		if !strings.Contains(s, want) {
+			t.Errorf("file missing %q. Contents:\n%s", want, s)
+		}
+	}
+}
+
+func TestSet_RejectsUnknownKey(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	err := Set("BOGUS", "value")
+	if err == nil {
+		t.Fatal("Set: expected error for unknown key, got nil")
+	}
+}

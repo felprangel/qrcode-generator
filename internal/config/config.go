@@ -72,3 +72,54 @@ func path() string {
 	}
 	return filepath.Join(base, "qrcode-generator", "config")
 }
+
+// Set writes or updates a single key in the config file.
+// The key must be in the whitelist of known keys.
+// Other keys, comments, and blank lines in the existing file are preserved.
+func Set(key, value string) error {
+	if _, ok := known[key]; !ok {
+		return fmt.Errorf("config: unknown key %q", key)
+	}
+
+	p := path()
+	if err := os.MkdirAll(filepath.Dir(p), 0o755); err != nil {
+		return fmt.Errorf("config: mkdir: %w", err)
+	}
+
+	existing, err := os.ReadFile(p)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("config: read: %w", err)
+	}
+
+	var out bytes.Buffer
+	replaced := false
+	prefix := key + "="
+	scanner := bufio.NewScanner(bytes.NewReader(existing))
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		if strings.HasPrefix(trimmed, prefix) {
+			out.WriteString(prefix + value + "\n")
+			replaced = true
+			continue
+		}
+		out.WriteString(line + "\n")
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("config: scan existing: %w", err)
+	}
+	if !replaced {
+		out.WriteString(prefix + value + "\n")
+	}
+
+	// Atomic write: tmp file in same dir, then rename.
+	tmp := p + ".tmp"
+	if err := os.WriteFile(tmp, out.Bytes(), 0o644); err != nil {
+		return fmt.Errorf("config: write tmp: %w", err)
+	}
+	if err := os.Rename(tmp, p); err != nil {
+		_ = os.Remove(tmp)
+		return fmt.Errorf("config: rename: %w", err)
+	}
+	return nil
+}
