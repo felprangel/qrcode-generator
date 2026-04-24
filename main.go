@@ -22,62 +22,84 @@ func main() {
 func run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
+
 		return 1
 	}
+
 	if args[0] == "config" {
 		return runConfig(args[1:], stderr)
 	}
+
 	return runGenerate(args, stdout, stderr)
 }
 
 func runGenerate(args []string, stdout, stderr io.Writer) int {
-	for _, a := range args {
-		if !isDigits(a) {
-			fmt.Fprintf(stderr, "error: invalid argument %q (must be numeric)\n", a)
+	for _, arg := range args {
+		if !isDigits(arg) {
+			fmt.Fprintf(stderr, "error: invalid argument %q (must be numeric)\n", arg)
+
 			return 1
 		}
 	}
+
 	cfg, err := config.Load()
+
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
+
 		return 1
 	}
-	for _, n := range args {
-		fmt.Fprintf(stdout, "--- %s ---\n", n)
-		qr.Render(stdout, cfg.Prefix+n)
+
+	for _, number := range args {
+		fmt.Fprintf(stdout, "--- %s ---\n", number)
+		qr.Render(stdout, cfg.Prefix+number)
 		fmt.Fprintln(stdout)
 	}
+
 	return 0
 }
 
 func runConfig(args []string, stderr io.Writer) int {
 	if len(args) != 2 || args[0] != "set" {
 		fmt.Fprint(stderr, usage)
+
 		return 1
 	}
-	kv := args[1]
-	eq := strings.IndexByte(kv, '=')
-	if eq <= 0 {
-		fmt.Fprintf(stderr, "error: expected KEY=VALUE, got %q\n", kv)
+
+	keyValue := args[1]
+
+	equalIndex := strings.IndexByte(keyValue, '=')
+
+	if equalIndex <= 0 {
+		fmt.Fprintf(stderr, "error: expected KEY=VALUE, got %q\n", keyValue)
+
 		return 1
 	}
-	key := kv[:eq]
-	value := kv[eq+1:]
-	if err := config.Set(key, value); err != nil {
+
+	key := keyValue[:equalIndex]
+	value := keyValue[equalIndex+1:]
+
+	err := config.Set(key, value)
+
+	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
+
 		return 1
 	}
+
 	return 0
 }
 
-func isDigits(s string) bool {
-	if s == "" {
+func isDigits(str string) bool {
+	if str == "" {
 		return false
 	}
-	for _, r := range s {
-		if r < '0' || r > '9' {
+
+	for _, rune := range str {
+		if rune < '0' || rune > '9' {
 			return false
 		}
 	}
+
 	return true
 }
