@@ -8,3 +8,7 @@
 # IDE
 .idea/
 .vscode/
+
+# LLMs
+.claude
+.omc
