@@ -1,9 +1,9 @@
-package main
+// Package cli wires argument parsing to config and qr rendering.
+package cli
 
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/felipe/qrcode-generator/internal/config"
@@ -13,13 +13,12 @@ import (
 const usage = `usage:
   qrcode-generator <number> [<number>...]
   qrcode-generator config set KEY=VALUE
+
+aliases: qr
 `
 
-func main() {
-	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
-}
-
-func run(args []string, stdout, stderr io.Writer) int {
+// Run dispatches CLI arguments. Returns the process exit code.
+func Run(args []string, stdout, stderr io.Writer) int {
 	if len(args) == 0 {
 		fmt.Fprint(stderr, usage)
 
@@ -95,8 +94,8 @@ func isDigits(str string) bool {
 		return false
 	}
 
-	for _, rune := range str {
-		if rune < '0' || rune > '9' {
+	for _, char := range str {
+		if char < '0' || char > '9' {
 			return false
 		}
 	}
