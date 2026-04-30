@@ -30,23 +30,35 @@ O comando grava o valor em `~/.config/qrcode-generator/config` (ou em `$XDG_CONF
 ## Instalação
 
 ```sh
-go install .
+go install ./...
 ```
 
-Isso coloca o binário `qrcode-generator` em `$(go env GOBIN)` (ou `$(go env GOPATH)/bin`). Garanta que esse diretório esteja no seu `$PATH`.
+Isso coloca dois binários em `$(go env GOBIN)` (ou `$(go env GOPATH)/bin`): `qrcode-generator` e o alias curto `qr`. Ambos têm o mesmo comportamento. Garanta que esse diretório esteja no seu `$PATH`.
 
 ## Uso
 
 ```sh
-qrcode-generator <número> [número...]
+qrcode-generator [-c|--clear] <número> [número...]
 qrcode-generator config set KEY=VALUE
+
+# alias equivalente
+qr [-c|--clear] <número> [número...]
+qr config set KEY=VALUE
 ```
+
+**Flags:**
+
+| Flag             | Descrição                                       |
+| ---------------- | ----------------------------------------------- |
+| `-c`, `--clear`  | Limpa o terminal antes de gerar os QR codes     |
 
 **Exemplos:**
 
 ```sh
 qrcode-generator 123
-qrcode-generator 1 2 3
+qr 1 2 3
+qr -c 42
+qrcode-generator --clear 1 2 3
 ```
 
 A saída é um QR code renderizado em ASCII (half-blocks) impresso no stdout, um por número informado.
@@ -54,5 +66,5 @@ A saída é um QR code renderizado em ASCII (half-blocks) impresso no stdout, um
 ## Desinstalação
 
 ```sh
-rm "$(go env GOPATH)/bin/qrcode-generator"
+rm "$(go env GOPATH)/bin/qrcode-generator" "$(go env GOPATH)/bin/qr"
 ```
