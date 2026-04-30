@@ -44,6 +44,55 @@ func TestRun_AllNumericArgs_ReturnsZeroAndPrintsHeaders(t *testing.T) {
 	}
 }
 
+func TestRun_ClearShortFlag_EmitsClearSequence(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"-c", "1"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0. stderr=%q", code, stderr.String())
+	}
+	if !strings.HasPrefix(stdout.String(), clearScreen) {
+		t.Errorf("stdout should start with clear sequence")
+	}
+}
+
+func TestRun_ClearLongFlag_EmitsClearSequence(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"1", "--clear"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0. stderr=%q", code, stderr.String())
+	}
+	if !strings.HasPrefix(stdout.String(), clearScreen) {
+		t.Errorf("stdout should start with clear sequence")
+	}
+}
+
+func TestRun_NoClearFlag_DoesNotEmitClearSequence(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"1"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0. stderr=%q", code, stderr.String())
+	}
+	if strings.Contains(stdout.String(), clearScreen) {
+		t.Errorf("stdout should not contain clear sequence")
+	}
+}
+
+func TestRun_ClearFlagOnlyNoNumbers_Returns1(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"-c"}, &stdout, &stderr)
+	if code != 1 {
+		t.Errorf("exit code = %d, want 1", code)
+	}
+}
+
 func TestRun_ConfigSet_PersistsValue(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 

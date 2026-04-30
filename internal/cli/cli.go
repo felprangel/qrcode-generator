@@ -11,11 +11,13 @@ import (
 )
 
 const usage = `usage:
-  qrcode-generator <number> [<number>...]
+  qrcode-generator [-c|--clear] <number> [<number>...]
   qrcode-generator config set KEY=VALUE
 
 aliases: qr
 `
+
+const clearScreen = "\033[H\033[2J\033[3J"
 
 // Run dispatches CLI arguments. Returns the process exit code.
 func Run(args []string, stdout, stderr io.Writer) int {
@@ -33,12 +35,29 @@ func Run(args []string, stdout, stderr io.Writer) int {
 }
 
 func runGenerate(args []string, stdout, stderr io.Writer) int {
+	shouldClear := false
+	numbers := make([]string, 0, len(args))
+
 	for _, arg := range args {
+		if arg == "-c" || arg == "--clear" {
+			shouldClear = true
+
+			continue
+		}
+
 		if !isDigits(arg) {
 			fmt.Fprintf(stderr, "error: invalid argument %q (must be numeric)\n", arg)
 
 			return 1
 		}
+
+		numbers = append(numbers, arg)
+	}
+
+	if len(numbers) == 0 {
+		fmt.Fprint(stderr, usage)
+
+		return 1
 	}
 
 	cfg, err := config.Load()
@@ -49,7 +68,11 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
-	for _, number := range args {
+	if shouldClear {
+		fmt.Fprint(stdout, clearScreen)
+	}
+
+	for _, number := range numbers {
 		fmt.Fprintf(stdout, "--- %s ---\n", number)
 		qr.Render(stdout, cfg.Prefix+number)
 		fmt.Fprintln(stdout)
