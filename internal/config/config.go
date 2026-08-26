@@ -1,4 +1,5 @@
-// Package config loads and persists user settings for qrcode-generator.
+// Package config loads and persists user presets for qrcode-generator.
+// A preset is a named prefix: NAME=VALUE per line. Names are case-insensitive.
 package config
 
 import (
@@ -11,32 +12,45 @@ import (
 	"strings"
 )
 
-// Config holds user-configurable settings.
-type Config struct {
-	Prefix string
+// DefaultKey is the reserved config key naming which preset to use when no
+// preset is requested. legacyDefault keeps old PREFIX= configs working.
+const DefaultKey = "@default"
+
+const legacyDefault = "prefix"
+
+// Resolve returns the prefix for the given preset name. When name is empty it
+// falls back to the configured default preset, then the legacy "prefix" preset.
+// ok reports whether the resolved preset actually exists.
+func Resolve(presets map[string]string, name string) (prefix string, ok bool) {
+	if name == "" {
+		name = presets[DefaultKey]
+	}
+
+	if name == "" {
+		name = legacyDefault
+	}
+
+	prefix, ok = presets[strings.ToLower(name)]
+
+	return prefix, ok
 }
 
-// known is the whitelist of recognized config keys.
-var known = map[string]struct{}{
-	"PREFIX": {},
-}
-
-// Load reads the config file from the user's XDG config directory.
-// If the file does not exist, Load returns a zero-value Config and nil error.
-func Load() (*Config, error) {
+// Load reads presets (name -> prefix) from the user's XDG config directory.
+// If the file does not exist, Load returns an empty map and nil error.
+func Load() (map[string]string, error) {
 	path := path()
 
 	data, err := os.ReadFile(path)
 
 	if errors.Is(err, os.ErrNotExist) {
-		return &Config{}, nil
+		return map[string]string{}, nil
 	}
 
 	if err != nil {
 		return nil, fmt.Errorf("config: read %s: %w", path, err)
 	}
 
-	cfg := &Config{}
+	presets := map[string]string{}
 
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 
@@ -45,8 +59,7 @@ func Load() (*Config, error) {
 	for scanner.Scan() {
 		lineNumber++
 
-		raw := scanner.Text()
-		trimmed := strings.TrimSpace(raw)
+		trimmed := strings.TrimSpace(scanner.Text())
 
 		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 			continue
@@ -58,24 +71,15 @@ func Load() (*Config, error) {
 			return nil, fmt.Errorf("config: line %d: missing '=' separator", lineNumber)
 		}
 
-		key := strings.TrimSpace(trimmed[:equalIndex])
-		value := trimmed[equalIndex+1:]
-
-		if _, ok := known[key]; !ok {
-			continue
-		}
-
-		switch key {
-		case "PREFIX":
-			cfg.Prefix = value
-		}
+		name := strings.ToLower(strings.TrimSpace(trimmed[:equalIndex]))
+		presets[name] = trimmed[equalIndex+1:]
 	}
 
 	if err := scanner.Err(); err != nil {
 		return nil, fmt.Errorf("config: scan %s: %w", path, err)
 	}
 
-	return cfg, nil
+	return presets, nil
 }
 
 // path returns the absolute path to the config file, honoring XDG_CONFIG_HOME.
@@ -90,12 +94,13 @@ func path() string {
 	return filepath.Join(base, "qrcode-generator", "config")
 }
 
-// Set writes or updates a single key in the config file.
-// The key must be in the whitelist of known keys.
-// Other keys, comments, and blank lines in the existing file are preserved.
-func Set(key, value string) error {
-	if _, ok := known[key]; !ok {
-		return fmt.Errorf("config: unknown key %q", key)
+// Set writes or updates a single preset in the config file.
+// Comments and blank lines in the existing file are preserved.
+func Set(name, value string) error {
+	name = strings.ToLower(strings.TrimSpace(name))
+
+	if name == "" {
+		return errors.New("config: preset name must not be empty")
 	}
 
 	path := path()
@@ -113,13 +118,13 @@ func Set(key, value string) error {
 	var out bytes.Buffer
 
 	replaced := false
-	prefix := key + "="
+	prefix := name + "="
 
 	scanner := bufio.NewScanner(bytes.NewReader(existing))
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		trimmed := strings.TrimSpace(line)
+		trimmed := strings.ToLower(strings.TrimSpace(line))
 
 		if strings.HasPrefix(trimmed, prefix) {
 			out.WriteString(prefix + value + "\n")

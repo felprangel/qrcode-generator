@@ -17,16 +17,17 @@ func TestRun_NoArgs_PrintsUsageAndReturns1(t *testing.T) {
 	}
 }
 
-func TestRun_NonNumericArg_Returns1AndNamesBadArg(t *testing.T) {
+func TestRun_ArbitraryText_IsAccepted(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	var stdout, stderr bytes.Buffer
-	code := Run([]string{"1", "abc", "3"}, &stdout, &stderr)
-	if code != 1 {
-		t.Errorf("exit code = %d, want 1", code)
+	code := Run([]string{"https://example.com", "hello world"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0. stderr=%q", code, stderr.String())
 	}
-	if !strings.Contains(stderr.String(), "abc") {
-		t.Errorf("stderr = %q, expected to name bad arg \"abc\"", stderr.String())
+	out := stdout.String()
+	if !strings.Contains(out, "--- https://example.com ---") || !strings.Contains(out, "--- hello world ---") {
+		t.Errorf("stdout missing per-content headers. got:\n%s", out)
 	}
 }
 
@@ -124,12 +125,78 @@ func TestRun_ConfigSet_Malformed_Returns1(t *testing.T) {
 	}
 }
 
-func TestRun_ConfigSet_UnknownKey_Returns1(t *testing.T) {
+func TestRun_Preset_SelectsPrefix(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 
 	var stdout, stderr bytes.Buffer
-	code := Run([]string{"config", "set", "BOGUS=x"}, &stdout, &stderr)
+	if code := Run([]string{"config", "set", "work=W-"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("config set exit = %d, stderr=%q", code, stderr.String())
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Run([]string{"-p", "work", "42"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0. stderr=%q", code, stderr.String())
+	}
+}
+
+func TestRun_UnknownPreset_Returns1(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	code := Run([]string{"-p", "nope", "42"}, &stdout, &stderr)
 	if code != 1 {
 		t.Errorf("exit code = %d, want 1", code)
+	}
+	if !strings.Contains(stderr.String(), "nope") {
+		t.Errorf("stderr = %q, want it to name the bad preset", stderr.String())
+	}
+}
+
+func TestRun_NoPreset_BypassesConfiguredDefault(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	for _, args := range [][]string{
+		{"config", "set", "work=W-"},
+		{"config", "default", "work"},
+	} {
+		if code := Run(args, &stdout, &stderr); code != 0 {
+			t.Fatalf("Run(%v) exit = %d, stderr=%q", args, code, stderr.String())
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	code := Run([]string{"--no-preset", "raw"}, &stdout, &stderr)
+	if code != 0 {
+		t.Errorf("exit code = %d, want 0. stderr=%q", code, stderr.String())
+	}
+	// --no-preset must not error even with a default configured, and no prefix
+	// is applied (the QR encodes "raw" verbatim).
+	if !strings.Contains(stdout.String(), "--- raw ---") {
+		t.Errorf("stdout missing header. got:\n%s", stdout.String())
+	}
+}
+
+func TestRun_ConfigDefault_SetsDefaultPreset(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	for _, args := range [][]string{
+		{"config", "set", "work=W-"},
+		{"config", "default", "work"},
+	} {
+		if code := Run(args, &stdout, &stderr); code != 0 {
+			t.Fatalf("Run(%v) exit = %d, stderr=%q", args, code, stderr.String())
+		}
+	}
+
+	// No -p flag should now resolve to the "work" preset without error.
+	stdout.Reset()
+	stderr.Reset()
+	if code := Run([]string{"42"}, &stdout, &stderr); code != 0 {
+		t.Errorf("generate with configured default exit = %d, stderr=%q", code, stderr.String())
 	}
 }

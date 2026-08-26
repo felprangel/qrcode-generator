@@ -11,9 +11,10 @@ import (
 )
 
 const usage = `usage:
-  qrcode-generator [-c|--clear] <number> [<number>...]
-  qrcode-generator config set KEY=VALUE
+  qrcode-generator [-c|--clear] [-p|--preset NAME | --no-preset] <text> [<text>...]
+  qrcode-generator config set NAME=PREFIX
 
+Set a default preset with: qrcode-generator config default NAME
 aliases: qr
 `
 
@@ -36,31 +37,37 @@ func Run(args []string, stdout, stderr io.Writer) int {
 
 func runGenerate(args []string, stdout, stderr io.Writer) int {
 	shouldClear := false
-	numbers := make([]string, 0, len(args))
+	noPreset := false
+	preset := ""
+	contents := make([]string, 0, len(args))
 
-	for _, arg := range args {
-		if arg == "-c" || arg == "--clear" {
+	for i := 0; i < len(args); i++ {
+		switch arg := args[i]; arg {
+		case "-c", "--clear":
 			shouldClear = true
+		case "--no-preset":
+			noPreset = true
+		case "-p", "--preset":
+			if i+1 >= len(args) {
+				fmt.Fprintf(stderr, "error: %s requires a preset name\n", arg)
 
-			continue
+				return 1
+			}
+
+			i++
+			preset = args[i]
+		default:
+			contents = append(contents, arg)
 		}
-
-		if !isDigits(arg) {
-			fmt.Fprintf(stderr, "error: invalid argument %q (must be numeric)\n", arg)
-
-			return 1
-		}
-
-		numbers = append(numbers, arg)
 	}
 
-	if len(numbers) == 0 {
+	if len(contents) == 0 {
 		fmt.Fprint(stderr, usage)
 
 		return 1
 	}
 
-	cfg, err := config.Load()
+	presets, err := config.Load()
 
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
@@ -68,13 +75,27 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 		return 1
 	}
 
+	prefix := ""
+
+	if !noPreset {
+		resolved, ok := config.Resolve(presets, preset)
+
+		if preset != "" && !ok {
+			fmt.Fprintf(stderr, "error: unknown preset %q\n", preset)
+
+			return 1
+		}
+
+		prefix = resolved
+	}
+
 	if shouldClear {
 		fmt.Fprint(stdout, clearScreen)
 	}
 
-	for _, number := range numbers {
-		fmt.Fprintf(stdout, "--- %s ---\n", number)
-		qr.Render(stdout, cfg.Prefix+number)
+	for _, content := range contents {
+		fmt.Fprintf(stdout, "--- %s ---\n", content)
+		qr.Render(stdout, prefix+content)
 		fmt.Fprintln(stdout)
 	}
 
@@ -82,27 +103,31 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 }
 
 func runConfig(args []string, stderr io.Writer) int {
-	if len(args) != 2 || args[0] != "set" {
+	switch {
+	case len(args) == 2 && args[0] == "set":
+		return configSet(args[1], stderr)
+	case len(args) == 2 && args[0] == "default":
+		return configErr(stderr, config.Set(config.DefaultKey, args[1]))
+	default:
 		fmt.Fprint(stderr, usage)
 
 		return 1
 	}
+}
 
-	keyValue := args[1]
-
-	equalIndex := strings.IndexByte(keyValue, '=')
+func configSet(nameValue string, stderr io.Writer) int {
+	equalIndex := strings.IndexByte(nameValue, '=')
 
 	if equalIndex <= 0 {
-		fmt.Fprintf(stderr, "error: expected KEY=VALUE, got %q\n", keyValue)
+		fmt.Fprintf(stderr, "error: expected NAME=PREFIX, got %q\n", nameValue)
 
 		return 1
 	}
 
-	key := keyValue[:equalIndex]
-	value := keyValue[equalIndex+1:]
+	return configErr(stderr, config.Set(nameValue[:equalIndex], nameValue[equalIndex+1:]))
+}
 
-	err := config.Set(key, value)
-
+func configErr(stderr io.Writer, err error) int {
 	if err != nil {
 		fmt.Fprintf(stderr, "error: %v\n", err)
 
@@ -110,18 +135,4 @@ func runConfig(args []string, stderr io.Writer) int {
 	}
 
 	return 0
-}
-
-func isDigits(str string) bool {
-	if str == "" {
-		return false
-	}
-
-	for _, char := range str {
-		if char < '0' || char > '9' {
-			return false
-		}
-	}
-
-	return true
 }
