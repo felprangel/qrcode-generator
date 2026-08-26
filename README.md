@@ -1,6 +1,6 @@
 # qrcode-generator
 
-Ferramenta CLI que gera QR codes em ASCII no terminal a partir de números, opcionalmente prefixados por uma URL base configurável.
+Ferramenta CLI que gera QR codes em ASCII no terminal a partir de qualquer texto, opcionalmente prefixado por um _preset_ configurável.
 
 ## Pré-requisitos
 
@@ -15,17 +15,22 @@ git clone https://github.com/felprangel/qrcode-generator
 cd qrcode-generator
 ```
 
-2. (Opcional) Defina um prefixo global aplicado a cada número antes de gerar o QR code:
+2. (Opcional) Defina _presets_ — prefixos nomeados concatenados antes do texto antes de gerar o QR code:
 
 ```sh
-qrcode-generator config set PREFIX=https://exemplo.com/
+qrcode-generator config set zap=https://wa.me/
+qrcode-generator config set site=https://exemplo.com/
+qrcode-generator config default zap   # usa "zap" quando -p é omitido
 ```
 
-O comando grava o valor em `~/.config/qrcode-generator/config` (ou em `$XDG_CONFIG_HOME/qrcode-generator/config`, se definido), preservando comentários e outras linhas do arquivo.
+O comando grava os valores em `~/.config/qrcode-generator/config` (ou em `$XDG_CONFIG_HOME/qrcode-generator/config`, se definido), preservando comentários e outras linhas do arquivo. Nomes de preset são case-insensitive.
 
-| Variável | Padrão | Descrição                                          |
-| -------- | ------ | -------------------------------------------------- |
-| `PREFIX` | _(vazio)_ | String concatenada antes do número ao gerar o QR |
+Selecione um preset na hora de gerar com `-p NOME`. Sem `-p`, é usado o preset default (ou o preset `prefix`, mantido por compatibilidade com versões antigas que usavam `PREFIX=`).
+
+| Comando                        | Descrição                                        |
+| ------------------------------ | ------------------------------------------------ |
+| `config set NOME=PREFIXO`      | Cria ou atualiza um preset                       |
+| `config default NOME`          | Define qual preset é usado quando `-p` é omitido |
 
 ## Instalação
 
@@ -38,30 +43,33 @@ Isso coloca dois binários em `$(go env GOBIN)` (ou `$(go env GOPATH)/bin`): `qr
 ## Uso
 
 ```sh
-qrcode-generator [-c|--clear] <número> [número...]
-qrcode-generator config set KEY=VALUE
+qrcode-generator [-c|--clear] [-p|--preset NOME] <texto> [texto...]
+qrcode-generator config set NOME=PREFIXO
+qrcode-generator config default NOME
 
 # alias equivalente
-qr [-c|--clear] <número> [número...]
-qr config set KEY=VALUE
+qr [-c|--clear] [-p|--preset NOME] <texto> [texto...]
 ```
 
 **Flags:**
 
-| Flag             | Descrição                                       |
-| ---------------- | ----------------------------------------------- |
-| `-c`, `--clear`  | Limpa o terminal antes de gerar os QR codes     |
+| Flag                  | Descrição                                       |
+| --------------------- | ----------------------------------------------- |
+| `-c`, `--clear`       | Limpa o terminal antes de gerar os QR codes     |
+| `-p`, `--preset NOME` | Usa o preset NOME como prefixo                   |
+| `--no-preset`         | Gera sem prefixo, ignorando o preset default     |
 
 **Exemplos:**
 
 ```sh
-qrcode-generator 123
-qr 1 2 3
+qr https://exemplo.com
+qr -p zap 5511999999999
+qr texto\ qualquer
 qr -c 42
 qrcode-generator --clear 1 2 3
 ```
 
-A saída é um QR code renderizado em ASCII (half-blocks) impresso no stdout, um por número informado.
+A saída é um QR code renderizado em ASCII (half-blocks) impresso no stdout, um por texto informado.
 
 ## Desinstalação
 
