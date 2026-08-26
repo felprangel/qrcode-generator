@@ -200,3 +200,30 @@ func TestRun_ConfigDefault_SetsDefaultPreset(t *testing.T) {
 		t.Errorf("generate with configured default exit = %d, stderr=%q", code, stderr.String())
 	}
 }
+
+func TestRun_ConfigList_SortsPresetsAndMarksDefault(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
+	var stdout, stderr bytes.Buffer
+	for _, args := range [][]string{
+		{"config", "set", "work=W-"},
+		{"config", "set", "home=H-"},
+		{"config", "default", "work"},
+	} {
+		if code := Run(args, &stdout, &stderr); code != 0 {
+			t.Fatalf("Run(%v) exit = %d, stderr=%q", args, code, stderr.String())
+		}
+	}
+
+	stdout.Reset()
+	stderr.Reset()
+	if code := Run([]string{"config", "list"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("config list exit = %d, stderr=%q", code, stderr.String())
+	}
+
+	// Sorted, default marked, and the reserved @default key itself hidden.
+	want := "home=H-\nwork=W-  (default)\n"
+	if stdout.String() != want {
+		t.Errorf("stdout = %q, want %q", stdout.String(), want)
+	}
+}

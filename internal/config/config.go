@@ -18,16 +18,22 @@ const DefaultKey = "@default"
 
 const legacyDefault = "prefix"
 
-// Resolve returns the prefix for the given preset name. When name is empty it
-// falls back to the configured default preset, then the legacy "prefix" preset.
-// ok reports whether the resolved preset actually exists.
-func Resolve(presets map[string]string, name string) (prefix string, ok bool) {
-	if name == "" {
-		name = presets[DefaultKey]
+// DefaultName returns the preset name used when none is requested: the
+// configured default, or the legacy "prefix" preset. The preset itself may not
+// exist.
+func DefaultName(presets map[string]string) string {
+	if name := strings.ToLower(presets[DefaultKey]); name != "" {
+		return name
 	}
 
+	return legacyDefault
+}
+
+// Resolve returns the prefix for the given preset name. When name is empty it
+// falls back to DefaultName. ok reports whether the preset actually exists.
+func Resolve(presets map[string]string, name string) (prefix string, ok bool) {
 	if name == "" {
-		name = legacyDefault
+		name = DefaultName(presets)
 	}
 
 	prefix, ok = presets[strings.ToLower(name)]

@@ -31,6 +31,13 @@ Selecione um preset na hora de gerar com `-p NOME`. Sem `-p`, é usado o preset 
 | ------------------------------ | ------------------------------------------------ |
 | `config set NOME=PREFIXO`      | Cria ou atualiza um preset                       |
 | `config default NOME`          | Define qual preset é usado quando `-p` é omitido |
+| `config list`                  | Lista os presets em ordem, marcando o default    |
+
+```sh
+$ qr config list
+site=https://exemplo.com/
+zap=https://wa.me/  (default)
+```
 
 ## Instalação
 
@@ -46,6 +53,7 @@ Isso coloca dois binários em `$(go env GOBIN)` (ou `$(go env GOPATH)/bin`): `qr
 qrcode-generator [-c|--clear] [-p|--preset NOME] <texto> [texto...]
 qrcode-generator config set NOME=PREFIXO
 qrcode-generator config default NOME
+qrcode-generator config list
 
 # alias equivalente
 qr [-c|--clear] [-p|--preset NOME] <texto> [texto...]

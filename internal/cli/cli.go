@@ -4,6 +4,7 @@ package cli
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/felipe/qrcode-generator/internal/config"
@@ -13,6 +14,7 @@ import (
 const usage = `usage:
   qrcode-generator [-c|--clear] [-p|--preset NAME | --no-preset] <text> [<text>...]
   qrcode-generator config set NAME=PREFIX
+  qrcode-generator config list
 
 Set a default preset with: qrcode-generator config default NAME
 aliases: qr
@@ -29,7 +31,7 @@ func Run(args []string, stdout, stderr io.Writer) int {
 	}
 
 	if args[0] == "config" {
-		return runConfig(args[1:], stderr)
+		return runConfig(args[1:], stdout, stderr)
 	}
 
 	return runGenerate(args, stdout, stderr)
@@ -102,12 +104,14 @@ func runGenerate(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
-func runConfig(args []string, stderr io.Writer) int {
+func runConfig(args []string, stdout, stderr io.Writer) int {
 	switch {
 	case len(args) == 2 && args[0] == "set":
 		return configSet(args[1], stderr)
 	case len(args) == 2 && args[0] == "default":
 		return configErr(stderr, config.Set(config.DefaultKey, args[1]))
+	case len(args) == 1 && args[0] == "list":
+		return configList(stdout, stderr)
 	default:
 		fmt.Fprint(stderr, usage)
 
@@ -125,6 +129,40 @@ func configSet(nameValue string, stderr io.Writer) int {
 	}
 
 	return configErr(stderr, config.Set(nameValue[:equalIndex], nameValue[equalIndex+1:]))
+}
+
+func configList(stdout, stderr io.Writer) int {
+	presets, err := config.Load()
+
+	if err != nil {
+		fmt.Fprintf(stderr, "error: %v\n", err)
+
+		return 1
+	}
+
+	names := make([]string, 0, len(presets))
+
+	for name := range presets {
+		if name != config.DefaultKey {
+			names = append(names, name)
+		}
+	}
+
+	sort.Strings(names)
+
+	defaultName := config.DefaultName(presets)
+
+	for _, name := range names {
+		marker := ""
+
+		if name == defaultName {
+			marker = "  (default)"
+		}
+
+		fmt.Fprintf(stdout, "%s=%s%s\n", name, presets[name], marker)
+	}
+
+	return 0
 }
 
 func configErr(stderr io.Writer, err error) int {
